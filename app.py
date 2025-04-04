@@ -106,7 +106,7 @@ def main():
                 vp.start()
 
             status.info(f"Processing round {round_num + 1}/4...")
-            time.sleep(20)
+            time.sleep(15)
             progress.progress((round_num + 1) / 4)
 
             for vp in video_processors:
