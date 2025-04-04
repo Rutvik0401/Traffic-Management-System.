@@ -47,7 +47,6 @@ class VideoProcessor(threading.Thread):
                 if 'ambulance' in label or 'fire truck' in label or 'police car' in label:
                     self.emergency_present = True
 
-                # ✅ Stop early to keep car count around 20
                 if self.car_count >= 20:
                     break
             frame_count += 1
@@ -67,7 +66,7 @@ def main():
     run_simulation = st.sidebar.button("▶️ Run Traffic Simulation")
     st.sidebar.info("This system detects traffic density and emergency vehicles to optimize signal flow.")
 
-    # Video paths
+    # Video paths and direction labels
     video_paths = ["Images/rushS.mp4", "Images/vehicle.mp4", "Images/rush.mp4", "Images/surveillance.m4v"]
     sides = ["North", "West", "East", "South"]
 
@@ -77,23 +76,22 @@ def main():
 
     cols1, cols2, cols3 = st.columns(3), st.columns(3), st.columns(3)
 
-    # Display video feeds
-    st.subheader("Live Camera Feeds")
-    for i, video_path in enumerate(video_paths):
-        if i == 0:
-            cols1[1].video(video_path)
-        elif i == 1:
-            cols2[0].video(video_path)
-        elif i == 2:
-            cols2[2].video(video_path)
-        else:
-            cols3[1].video(video_path)
-
-    # Simulation
     if run_simulation:
+        # 🔴 Display all video feeds together
+        st.subheader("📹 Live Camera Feeds")
+        for i, video_path in enumerate(video_paths):
+            if i == 0:
+                cols1[1].video(video_path)
+            elif i == 1:
+                cols2[0].video(video_path)
+            elif i == 2:
+                cols2[2].video(video_path)
+            else:
+                cols3[1].video(video_path)
+
+        # Progress and output placeholders
         progress = st.progress(0)
         status = st.empty()
-        p1, p2, p3, p4 = st.empty(), st.empty(), st.empty(), st.empty()
 
         for round_num in range(4):
             k = round_num * 10
@@ -101,12 +99,13 @@ def main():
             emergency_detected = False
             emergency_side = None
 
+            # Run all processors in parallel
             video_processors = [VideoProcessor(video_path, side) for video_path, side in zip(video_paths, sides)]
             for vp in video_processors:
                 vp.start()
 
-            status.info(f"Processing round {round_num + 1}/4...")
-            time.sleep(15)
+            status.info(f"🔄 Processing round {round_num + 1}/4...")
+            time.sleep(20)
             progress.progress((round_num + 1) / 4)
 
             for vp in video_processors:
@@ -114,6 +113,7 @@ def main():
             for vp in video_processors:
                 vp.join()
 
+            # Analyze results
             for i, vp in enumerate(video_processors):
                 car_counts[i] = vp.car_count
                 if vp.emergency_present:
@@ -128,21 +128,20 @@ def main():
                 most_traffic_index = car_counts.index(max(car_counts))
                 dir = sides[most_traffic_index]
 
-            # Display traffic data table
+            # Show table
+            st.markdown("### 🚘 Traffic Analysis Table")
             data = pd.DataFrame({
                 "Side": sides,
                 "Number of Vehicles": car_counts,
                 "Traffic Light": ["🟢 Green" if side == dir else "🔴 Red" for side in sides]
             })
-
-            st.markdown("### 🚘 Traffic Analysis Table")
             st.dataframe(data, use_container_width=True)
 
-            # Bar chart
+            # Show chart
             st.markdown("### 📊 Vehicle Count Chart")
             st.bar_chart(pd.DataFrame({'Vehicles': car_counts}, index=sides))
 
-            # Show signal lights
+            # Show lights
             with st.expander("🚦 View Traffic Lights"):
                 Light(dir, cols1, cols2, cols3)
 
